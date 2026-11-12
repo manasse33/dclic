@@ -35,6 +35,10 @@ header .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:spac
 .flag{height:5px;background:linear-gradient(90deg,#009A44 33.3%,#FBDE4A 33.3% 66.6%,#DC241F 66.6%)}
 .note{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding:16px 0 28px;margin-top:36px}
 .note p{max-width:none;margin:0 0 .4em}
+.ctc{margin:0 0 22px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.ctc h2{font-size:18px;margin:0 0 10px;color:var(--text)}
+.ctc p{font-size:14px;margin:0 0 .35em;color:var(--text)}
+.ctc b{display:inline-block;min-width:92px;color:var(--muted);font-weight:400}
 
 /* fond animé */
 #world{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
@@ -189,15 +193,16 @@ mark.todo{background:#FFD612;color:#123C3B;padding:0 5px;border-radius:4px;font-
 <div class="flag"></div>
 <main class="wrap" id="app" aria-live="polite"></main>
 <div class="wrap"><div class="note">
+<section class="ctc" id="contact" aria-labelledby="ctt"><h2 id="ctt">Contact</h2><div id="ctb"></div></section>
 <p>D-CLIC cohorte 3 · Direction Générale de la Formation Qualifiante et de l’Emploi · Organisation internationale de la Francophonie</p>
-<p><button type="button" class="lk" onclick="openLegal('ml')">Mentions légales</button> · <button type="button" class="lk" onclick="openLegal('cgu')">Conditions d’utilisation</button></p>
+<p><button type="button" class="lk" onclick="openLegal('ml')">Mentions légales</button> · <button type="button" class="lk" onclick="openLegal('cgu')">Conditions d’utilisation</button> · <button type="button" class="lk" onclick="openLegal('pc')">Politique de confidentialité</button></p>
 </div></div>
 
 <script>
 /* ---------- Configuration ---------- */
 const CFG={
- URL:"",          /* URL du script Google Sheets (Apps Script). Vide = mode démonstration : rien n’est enregistré. */
- STRICT:false,    /* true en production : sans URL, l’envoi est refusé au lieu d’être simulé. */
+ URL:"https://script.google.com/macros/s/AKfycbwRrA35OWx-ypwPsm5dCY9eiW-XLoR0P0JBOH6kQ0JwFyaKyBC-GwsYqU1w7iVBiYXEMg/exec",   /* URL de déploiement Apps Script (se termine par /exec). Vide = mode démonstration : rien n’est enregistré. */
+ STRICT:true,    /* true en production : sans URL, l’envoi est refusé au lieu d’être simulé. */
  AGE_MIN:15,AGE_MAX:70   /* garde-fous de saisie, à ajuster selon les règles du programme */
 };
 /* Informations légales : renseignez les champs vides (ils s’affichent « [à compléter] » tant qu’ils sont vides). */
@@ -328,7 +333,7 @@ function questions(){
  const mk=S.f==="marketing",n=F[S.f].n,others=KEYS.filter(x=>x!==S.f);
  const NO="Cette réponse n’empêche pas l’envoi de votre préinscription. Elle sera transmise à l’équipe D-CLIC avec votre dossier.";
  return[
- {sec:0,id:"ok",label:"Consentement",t:"Souhaitez-vous poursuivre votre préinscription ?",note:`Les informations que vous allez fournir servent uniquement à traiter votre candidature à D-CLIC. Un dossier contenant des informations inexactes sera rejeté. En poursuivant, vous acceptez les <button type="button" class="lk" onclick="openLegal('cgu')">Conditions d’utilisation</button>, qui précisent l’usage de vos données personnelles.`,o:["Oui, je continue","Non"]},
+ {sec:0,id:"ok",label:"Consentement",t:"Souhaitez-vous poursuivre votre préinscription ?",note:`Les informations que vous allez fournir servent uniquement à traiter votre candidature à D-CLIC. Un dossier contenant des informations inexactes sera rejeté. En poursuivant, vous acceptez les <button type="button" class="lk" onclick="openLegal('cgu')">Conditions d’utilisation</button> et la <button type="button" class="lk" onclick="openLegal('pc')">Politique de confidentialité</button>, qui précisent l’usage de vos données personnelles.`,o:["Oui, je continue","Non"]},
  {sec:1,id:"sit",label:"Situation",t:"Quelle est votre situation actuelle ?",o:["Sans emploi","En reconversion professionnelle","Étudiant(e)"]},
  {sec:1,id:"ville",label:"Ville",t:"Dans quelle ville résidez-vous ?",o:["Brazzaville","Pointe-Noire","Une autre ville"]},
  {sec:1,id:"ville2",label:"Ville précisée",t:"Quelle est votre ville ?",type:"text",ph:"Votre ville",if:a=>a.ville==="Une autre ville"},
@@ -354,8 +359,9 @@ const KEYMAP={ok:"consentement",sit:"situation",ville:"ville",ville2:"ville_autr
 const PK="dclic_pending",SENT={};
 const pend=()=>{try{return JSON.parse(localStorage.getItem(PK)||"[]")}catch(e){return[]}};
 const setPend=a=>{try{localStorage.setItem(PK,JSON.stringify(a))}catch(e){}};
-async function post(d){const r=await fetch(CFG.URL,{method:"POST",body:new URLSearchParams(d)});const j=await r.json();if(!j.ok)throw new Error(j.error||"Erreur");return j.ref}
-async function flush(){if(!CFG.URL||!navigator.onLine)return;for(const d of pend()){try{SENT[d.id]=await post(d);setPend(pend().filter(x=>x.id!==d.id))}catch(e){}}}
+async function post(d){const r=await fetch(CFG.URL,{method:"POST",body:new URLSearchParams(d)});const j=await r.json();if(!j.ok){const e=new Error(j.error||"Erreur");e.code=j.error;e.champ=j.champ;throw e}return j.ref}
+const definitif=e=>!!e&&(e.code==="invalid"||e.code==="closed");   /* inutile de renvoyer : le serveur refusera encore */
+async function flush(){if(!CFG.URL||!navigator.onLine)return;for(const d of pend()){try{SENT[d.id]=await post(d);setPend(pend().filter(x=>x.id!==d.id))}catch(e){if(definitif(e))setPend(pend().filter(x=>x.id!==d.id))}}}
 addEventListener("online",flush);flush();
 
 /* validation */
@@ -491,6 +497,10 @@ async function submit(){
   setPend(pend().filter(x=>x.id!==d.id));S.view="done";S.sending=false;renderModal();confetti();snd("ok");buzz([30,40,60]);
  }catch(e){S.sending=false;
   if(!CFG.URL&&CFG.STRICT){S.err="L’enregistrement des préinscriptions n’est pas encore activé. Veuillez réessayer ultérieurement.";renderModal();return}
+  if(definitif(e)){setPend(pend().filter(x=>x.id!==d.id));
+   if(e.code==="closed")S.err="Les préinscriptions sont closes. Merci de l’intérêt que vous portez à D-CLIC.";
+   else{const q=S.qs.find(x=>KEYMAP[x.id]===e.champ);S.err="Votre dossier n’a pas pu être validé"+(q?" : vérifiez la rubrique « "+q.label+" » avec le bouton « Modifier »":"")+"."}
+   renderModal();return}
   const a=pend().filter(x=>x.id!==d.id);a.push(d);setPend(a);
   S.err="Envoi impossible pour le moment (connexion ?). Vos réponses sont conservées sur cet appareil : appuyez de nouveau sur « Confirmer » lorsque la connexion sera rétablie.";renderModal();
  }
@@ -498,6 +508,12 @@ async function submit(){
 
 /* ---------- Mentions légales et conditions d’utilisation ---------- */
 const todo=x=>x?esc(x):'<mark class="todo">[à compléter]</mark>';
+function contactHTML(){
+ const mail=ORG.contact?`<a class="lk" href="mailto:${esc(ORG.contact)}">${esc(ORG.contact)}</a>`:todo("");
+ const tel=ORG.telephone?`<a class="lk" href="tel:${esc(ORG.telephone.replace(/[^\d+]/g,""))}">${esc(ORG.telephone)}</a>`:todo("");
+ return `<p><b>Courriel</b> ${mail}</p><p><b>Téléphone</b> ${tel}</p><p><b>Adresse</b> ${todo(ORG.adresse)}</p><p class="muted" style="margin-top:8px">Pour toute question sur votre préinscription ou sur vos données personnelles, écrivez-nous en précisant votre numéro de dossier.</p>`;
+}
+$("#ctb").innerHTML=contactHTML();
 const LG={
 ml:{t:"Mentions légales",h:()=>`
 <h3>Éditeur du site</h3><p>${todo(ORG.editeur)}</p><p>Adresse : ${todo(ORG.adresse)}</p>
@@ -506,27 +522,42 @@ ml:{t:"Mentions légales",h:()=>`
 <h3>Hébergement</h3><p>${todo(ORG.hebergeur)}</p>
 <h3>Contact</h3><p>Courriel : ${todo(ORG.contact)}<br>Téléphone : ${todo(ORG.telephone)}</p>
 <h3>Propriété intellectuelle</h3><p>Les textes, logos, vidéos et éléments graphiques de ce site appartiennent à leurs titulaires respectifs (D-CLIC, OIF, DGFQE et leurs partenaires). Toute reproduction ou réutilisation sans autorisation écrite préalable est interdite.</p>
-<h3>Données personnelles</h3><p>Le traitement des données collectées par le formulaire est décrit dans les <button type="button" class="lk" onclick="lgTab('cgu')">Conditions d’utilisation</button>.</p>
+<h3>Données personnelles</h3><p>Le traitement des données collectées par le formulaire est décrit dans la <button type="button" class="lk" onclick="lgTab('pc')">Politique de confidentialité</button>.</p>
 <p class="muted">Dernière mise à jour : ${esc(ORG.maj)}.</p>`},
 cgu:{t:"Conditions d’utilisation",h:()=>`
 <h3>1. Objet</h3><p>Les présentes conditions encadrent l’utilisation du site de préinscription à la cohorte 3 du programme D-CLIC au Congo. En utilisant ce site, vous les acceptez.</p>
 <h3>2. Accès au site</h3><p>Le site est accessible gratuitement. Les frais de connexion à internet restent à votre charge. L’éditeur peut en suspendre l’accès à tout moment, notamment pour maintenance ou lorsque les préinscriptions sont closes.</p>
 <h3>3. Préinscription</h3><p>La préinscription n’est pas une admission : elle permet à l’équipe D-CLIC d’examiner votre candidature. Le nombre de places étant limité, l’envoi du formulaire ne garantit pas l’accès à la formation. Les candidats retenus sont contactés par téléphone ou par email.</p>
 <h3>4. Vos engagements</h3><p>Vous vous engagez à fournir des informations exactes, complètes et à jour, à agir pour votre propre compte et à ne déposer qu’une seule préinscription. Un dossier contenant des informations inexactes ou frauduleuses peut être rejeté, y compris après son envoi.</p>
-<h3>5. Données personnelles</h3>
-<p><b>Données collectées :</b> situation, ville, matériel et accès à internet, nom, prénoms, sexe, date de naissance, numéros de téléphone, adresse email (facultative), niveau d’études, expérience, motivation, ainsi que le nom et le numéro de téléphone d’un proche.</p>
-<p><b>Finalités :</b> traiter votre candidature, vous contacter et établir des statistiques sur les candidatures. Vos données ne sont ni vendues ni utilisées à des fins publicitaires.</p>
-<p><b>Destinataires :</b> l’équipe en charge de D-CLIC au Congo et les organisations partenaires du programme, dans la limite de leur mission.</p>
-<p><b>Proche à contacter :</b> en indiquant ses coordonnées, vous déclarez l’en avoir informé. Elles servent uniquement à vous joindre si nécessaire.</p>
-<p><b>Durée de conservation :</b> ${todo(ORG.conservation)}.</p>
-<p><b>Vos droits :</b> conformément à la législation applicable en République du Congo en matière de protection des données à caractère personnel, vous disposez d’un droit d’accès, de rectification, de suppression et d’opposition. Pour les exercer : ${todo(ORG.contact)}.</p>
-<p><b>Sur votre appareil :</b> si l’envoi échoue (connexion coupée), vos réponses sont conservées temporairement sur votre appareil afin de pouvoir être renvoyées, puis supprimées après l’envoi. Sur un appareil partagé, pensez à effacer les données du site.</p>
-<p><b>Cookies et services tiers :</b> le site n’utilise ni cookie publicitaire ni outil de mesure d’audience. Les polices de caractères sont chargées depuis Google Fonts, ce qui transmet votre adresse IP à ce service.</p>
+<h3>5. Données personnelles</h3><p>Les données que vous fournissez sont traitées conformément à la <button type="button" class="lk" onclick="lgTab('pc')">Politique de confidentialité</button>, qui précise les données collectées, leur usage, leur durée de conservation et vos droits.</p>
 <h3>6. Propriété intellectuelle</h3><p>Voir les <button type="button" class="lk" onclick="lgTab('ml')">Mentions légales</button>.</p>
 <h3>7. Responsabilité</h3><p>L’éditeur s’efforce d’assurer le bon fonctionnement du site mais ne peut garantir une disponibilité continue ni l’absence d’erreur. Il ne saurait être tenu responsable d’une coupure de connexion ou d’un envoi non abouti. Vérifiez la confirmation affichée à l’écran avant de quitter la page.</p>
 <h3>8. Évolution des conditions</h3><p>Ces conditions peuvent évoluer. La version en vigueur est celle affichée sur le site.</p>
 <h3>9. Droit applicable</h3><p>Ces conditions sont soumises au droit congolais. Tout litige relève des juridictions compétentes de la République du Congo.</p>
 <p class="muted">Dernière mise à jour : ${esc(ORG.maj)}.</p>`}};
+LG.pc={t:"Politique de confidentialité",h:()=>`
+<p>Cette politique explique quelles données sont collectées par le formulaire de préinscription D-CLIC, pourquoi, et comment vous pouvez exercer vos droits.</p>
+<h3>1. Responsable du traitement</h3><p>${todo(ORG.editeur)}</p><p>Contact : ${ORG.contact?esc(ORG.contact):todo("")}</p>
+<h3>2. Données collectées</h3>
+<p><b>Situation :</b> situation actuelle (sans emploi, reconversion ou étudiant), ville, matériel disponible, fréquence de connexion à internet.</p>
+<p><b>Identité et coordonnées :</b> nom, prénoms, sexe, date de naissance, numéro de téléphone principal, autre numéro et adresse email (facultatifs).</p>
+<p><b>Projet :</b> formation choisie, deuxième choix, niveau d’études, expérience, motivation, visionnage de la vidéo de présentation.</p>
+<p><b>Personne à contacter :</b> nom et numéro de téléphone d’un proche.</p>
+<p>Le serveur enregistre aussi la date et l’heure de réception de votre dossier. Aucune adresse IP n’est conservée avec votre dossier.</p>
+<h3>3. Pourquoi ces données sont utilisées</h3>
+<p>Elles servent à examiner votre candidature, à vous contacter par téléphone ou par email, à gérer les places et les deuxièmes choix, et à produire des statistiques sur les candidatures. Elles reposent sur votre consentement, donné avant le formulaire. Aucune décision automatisée n’est prise à partir de vos réponses.</p>
+<h3>4. Qui y a accès</h3>
+<p>L’équipe en charge de D-CLIC au Congo et les organisations partenaires du programme, dans la limite de leur mission. Vos données ne sont ni vendues, ni cédées à des fins commerciales, ni utilisées pour de la publicité.</p>
+<h3>5. Stockage et sécurité</h3>
+<p>Vos réponses sont enregistrées dans un tableur en ligne à accès restreint, hébergé par Google, dont les serveurs peuvent se situer hors du Congo. Les mesures suivantes s’appliquent : accès limité aux personnes habilitées, contrôle systématique des informations reçues, limitation des envois abusifs, sauvegardes régulières et transmission chiffrée entre votre appareil et le serveur.</p>
+<h3>6. Durée de conservation</h3><p>${todo(ORG.conservation)}.</p>
+<h3>7. Vos droits</h3>
+<p>Conformément à la législation applicable en République du Congo en matière de protection des données à caractère personnel, vous pouvez demander l’accès à vos données, leur rectification, leur suppression, vous opposer à leur traitement et retirer votre consentement à tout moment. Pour cela, écrivez à ${ORG.contact?esc(ORG.contact):todo("")} en indiquant votre numéro de dossier ; une pièce justifiant votre identité pourra vous être demandée. Vous pouvez aussi saisir l’autorité congolaise compétente en matière de protection des données.</p>
+<h3>8. Proche à contacter</h3><p>En indiquant les coordonnées d’un proche, vous déclarez l’en avoir informé. Elles servent uniquement à vous joindre si l’équipe n’y parvient pas directement.</p>
+<h3>9. Sur votre appareil et services tiers</h3>
+<p>Si l’envoi échoue (connexion coupée), vos réponses sont conservées temporairement sur votre appareil afin d’être renvoyées, puis supprimées après l’envoi. Sur un appareil partagé, pensez à effacer les données du site. Le site n’utilise ni cookie publicitaire ni outil de mesure d’audience. Les polices de caractères sont chargées depuis Google Fonts, ce qui transmet votre adresse IP à ce service.</p>
+<h3>10. Modification de cette politique</h3><p>Cette politique peut évoluer. La version en vigueur est celle affichée sur le site.</p>
+<p class="muted">Dernière mise à jour : ${esc(ORG.maj)}.</p>`};
 function openLegal(tab){
  S.lg=tab||"ml";S.lgOpener=document.activeElement;document.body.style.overflow="hidden";
  if(!$("#lg")){document.body.insertAdjacentHTML("beforeend",'<div id="lg" class="md lg" role="dialog" aria-modal="true" aria-label="Informations légales"><div class="mdc"></div></div>');$("#lg").addEventListener("mousedown",e=>{if(e.target.id==="lg")closeLegal()})}
